@@ -1,0 +1,77 @@
+import org.json.JSONObject;
+import java.io.FileReader;
+import java.math.BigInteger;
+import java.util.ArrayList;
+import java.util.List;
+
+public class ShamirSecretSharing {
+
+    public static void main(String[] args) throws Exception {
+        JSONObject testCase1 = new JSONObject(new FileReader("testcase1.json"));
+        JSONObject testCase2 = new JSONObject(new FileReader("testcase2.json"));
+
+        BigInteger secret1 = findSecret(testCase1);
+        BigInteger secret2 = findSecret(testCase2);
+
+        System.out.println("Secret for Test Case 1: " + secret1);
+        System.out.println("Secret for Test Case 2: " + secret2);
+    }
+
+    private static BigInteger findSecret(JSONObject testCase) {
+        int n = testCase.getJSONObject("keys").getInt("n");
+        int k = testCase.getJSONObject("keys").getInt("k");
+        int degree = k - 1;
+
+        List<Point> points = new ArrayList<>();
+
+        for (String key : testCase.keySet()) {
+            if (!key.equals("keys")) {
+                int x = Integer.parseInt(key);
+                JSONObject root = testCase.getJSONObject(key);
+                int base = root.getInt("base");
+                String value = root.getString("value");
+                BigInteger y = decodeValue(value, base);
+                points.add(new Point(x, y));
+            }
+        }
+
+        return lagrangeInterpolation(points, degree);
+    }
+
+    private static BigInteger decodeValue(String value, int base) {
+        return new BigInteger(value, base);
+    }
+
+    private static BigInteger lagrangeInterpolation(List<Point> points, int degree) {
+        BigInteger constant = BigInteger.ZERO;
+
+        for (int i = 0; i <= degree; i++) {
+            Point pi = points.get(i);
+            BigInteger numerator = BigInteger.ONE;
+            BigInteger denominator = BigInteger.ONE;
+
+            for (int j = 0; j <= degree; j++) {
+                if (i != j) {
+                    Point pj = points.get(j);
+                    numerator = numerator.multiply(BigInteger.valueOf(-pj.x));
+                    denominator = denominator.multiply(BigInteger.valueOf(pi.x - pj.x));
+                }
+            }
+
+            BigInteger term = pi.y.multiply(numerator).divide(denominator);
+            constant = constant.add(term);
+        }
+
+        return constant;
+    }
+
+    private static class Point {
+        int x;
+        BigInteger y;
+
+        Point(int x, BigInteger y) {
+            this.x = x;
+            this.y = y;
+        }
+    }
+}
